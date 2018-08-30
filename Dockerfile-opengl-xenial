@@ -1,0 +1,91 @@
+# Mesa3D Software Drivers
+#
+# VERSION 18.1.7
+
+#FROM ubuntu:bionic
+FROM ubuntu:xenial
+
+# Build arguments.
+ARG VCS_REF
+ARG BUILD_DATE
+ARG MESA_DEMOS="false"
+
+# Labels / Metadata.
+LABEL maintainer="James Brink, brink.james@gmail.com" \
+      decription="Mesa3D Software Drivers" \
+      version="18.1.7" \
+      org.label-schema.name="Mesa3D-Software-Drivers" \
+      org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.vcs-url="https://github.com/jamesbrink/docker-gource" \
+      org.label-schema.schema-version="1.0.0-rc1"
+
+# Install all needed deps and compile the mesa llvmpipe driver from source.
+RUN apt update && \
+    apt -y upgrade && \
+    apt -y install \
+       curl emacs nano vim bash-completion && \
+    apt -y install \
+       build-essential pkg-config clang-6.0 x11-utils \
+       wget python-dev \
+       llvm-dev llvm-6.0-dev zlib1g-dev x11proto-gl-dev xserver-xorg-dev \
+       libx11-dev libxext-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-xfixes0-dev && \
+    apt -y clean
+
+# set clang 6.0 as default
+RUN update-alternatives \
+      --install /usr/bin/clang clang /usr/bin/clang-6.0 100 \
+      --slave /usr/bin/clang++ clang++ /usr/bin/clang++-6.0 \
+      --slave /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-6.0
+    
+
+# Install mesa
+RUN mkdir -p /var/tmp/build && \
+    cd /var/tmp/build && \
+    wget "https://mesa.freedesktop.org/archive/mesa-18.1.7.tar.gz" && \
+    tar xfv mesa-18.1.7.tar.gz && \
+    rm mesa-18.1.7.tar.gz && \
+    cd mesa-18.1.7 && \
+    ./configure \
+        --enable-llvm --enable-glx=gallium-xlib --with-gallium-drivers=swrast,swr \
+        --disable-dri --disable-gbm --disable-egl \
+	--enable-gallium-osmesa --prefix=/usr/local && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf mesa-18.1.7
+    
+# Install mesa
+COPY mesa-demos-8.4.0.tar.gz /tmp
+RUN apt -y install libglew-dev freeglut3-dev && \
+    apt -y clean && \
+    tar xfv /tmp/mesa-demos-8.4.0.tar.gz && \
+    rm /tmp/mesa-demos-8.4.0.tar.gz && \
+    cd mesa-demos-8.4.0 &&  \
+    ./configure --prefix=/usr/local; \
+    make; \
+    make install; \
+    cd .. && \
+    rm -rf mesa-demos-8.4.0
+
+# RUN apt -y install xvfb && \
+#     apt -y autoremove && \
+#     apt -y clean
+
+# Copy our entrypoint into the container.
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Setup our environment variables.
+# ENV XVFB_WHD="1920x1080x24"\
+#     DISPLAY=":99" \
+ENV XLIB_SKIP_ARGB_VISUALS=1 \
+    LIBGL_ALWAYS_SOFTWARE="1" \
+    GALLIUM_DRIVER="llvmpipe" \
+    LP_NO_RAST="false" \
+    LP_DEBUG="" \
+    LP_PERF="" \
+    LP_NUM_THREADS=""
+
+# # Set the default command.
+# ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["bash"]
