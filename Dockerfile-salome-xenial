@@ -1,0 +1,52 @@
+# Mesa3D Software Drivers
+#
+# VERSION 18.1.7
+
+#FROM ubuntu:bionic
+FROM mesa:18.1.7-xenial
+
+# Build arguments.
+ARG SALOME_PACKAGE=SALOME-8.4.0-MPI-UB16.04.tgz
+ARG SALOME_INSTALLDIR=SALOME-8.4.0-MPI-UB16.04
+
+# Labels / Metadata.
+LABEL maintainer="Christophe Trophime, christophe.trophime@lncmi.cnrs.fr" \
+      decription="Salome with Mesa3D 18.1.7 Software Drivers" \
+      version="8.4.0"
+
+# Seup demo environment variables
+ENV LANG=en_US.UTF-8 \
+	LANGUAGE=en_US.UTF-8 \
+	LC_ALL=C.UTF-8
+
+# at the beginning
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+# install prerequired packaged for Salome
+COPY install-${SALOME_INSTALLDIR}.sh /tmp
+COPY ${SALOME_PACKAGE} /tmp/${SALOME_PACKAGE}
+RUN cd /tmp && \
+    chmod g+x install-${SALOME_INSTALLDIR}.sh && \
+    ./install-${SALOME_INSTALLDIR}.sh $GPGKEY $DIST
+RUN rm -f /tmp/install-${SALOME_INSTALLDIR}.sh && \
+    rm -f /tmp/${SALOME_PACKAGE}
+
+# Remove systeme mesa
+
+# #set up user so that we do not run as root
+# # Changing the password does not work on certain OS and is not needed
+# # echo "feelpp:docker" | chpasswd && \
+RUN useradd -m -s /bin/bash -G sudo,video feelpp && \
+     mkdir -p  /etc/sudoers.d/ && \
+     echo "feelpp ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers.d/feelpp
+
+# Define user
+USER feelpp
+ENV HOME /home/feelpp 
+ENV PATH /opt/${SALOME_INSTALLDIR}/:$PATH
+ENV DISTENE_LICENSE_FILE /opt/DISTENE/DLim/dlim8.key
+
+# at the end
+RUN echo 'debconf debconf/frontend select Dialog' | sudo debconf-set-selections
+
+CMD ["bash"]
