@@ -9,11 +9,12 @@ FROM ubuntu:xenial
 ARG VCS_REF
 ARG BUILD_DATE
 ARG MESA_DEMOS="false"
+ARG VERSION="18.1.7"
 
 # Labels / Metadata.
 LABEL maintainer="James Brink, brink.james@gmail.com" \
       decription="Mesa3D Software Drivers" \
-      version="18.1.7" \
+      version=$VERSION \
       org.label-schema.name="Mesa3D-Software-Drivers" \
       org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.vcs-ref=$VCS_REF \
@@ -27,7 +28,7 @@ RUN apt update && \
        curl emacs nano vim bash-completion && \
     apt -y install \
        build-essential pkg-config clang-6.0 x11-utils \
-       wget python-dev \
+       wget python-dev python-mako \
        llvm-dev llvm-6.0-dev zlib1g-dev x11proto-gl-dev xserver-xorg-dev \
        libx11-dev libxext-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-xfixes0-dev && \
     apt -y clean
@@ -38,14 +39,20 @@ RUN update-alternatives \
       --slave /usr/bin/clang++ clang++ /usr/bin/clang++-6.0 \
       --slave /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-6.0
     
+# # Add missing libtizcore (tizonia-all)
+# RUN curl 'https://bintray.com/user/downloadSubjectPublicKey?username=tizonia' | sudo apt-key add -  && \
+#     echo deb https://dl.bintray.com/tizonia/ubuntu xenial main | sudo tee -a /etc/apt/sources.list.d/tizonia.list && \
+#     apt-get update && \
+#     apt-get -y install libtizcore-dev && \
+#     apt -y clean
 
 # Install mesa
 RUN mkdir -p /var/tmp/build && \
     cd /var/tmp/build && \
-    wget "https://mesa.freedesktop.org/archive/mesa-18.1.7.tar.gz" && \
-    tar xfv mesa-18.1.7.tar.gz && \
-    rm mesa-18.1.7.tar.gz && \
-    cd mesa-18.1.7 && \
+    wget "https://mesa.freedesktop.org/archive/mesa-$VERSION.tar.gz" && \
+    tar xfv mesa-$VERSION.tar.gz && \
+    rm mesa-$VERSION.tar.gz && \
+    cd mesa-$VERSION && \
     ./configure \
         --enable-llvm --enable-glx=gallium-xlib --with-gallium-drivers=swrast,swr \
         --disable-dri --disable-gbm --disable-egl \
@@ -53,27 +60,41 @@ RUN mkdir -p /var/tmp/build && \
     make && \
     make install && \
     cd .. && \
-    rm -rf mesa-18.1.7
+    rm -rf mesa-$VERSION
     
-# Install mesa
-COPY mesa-demos-8.4.0.tar.gz /tmp
-RUN apt -y install libglew-dev freeglut3-dev && \
-    apt -y clean && \
-    tar xfv /tmp/mesa-demos-8.4.0.tar.gz && \
-    rm /tmp/mesa-demos-8.4.0.tar.gz && \
-    cd mesa-demos-8.4.0 &&  \
-    ./configure --prefix=/usr/local; \
-    make; \
-    make install; \
+# Install mesa-glu (git checkout tags/9.0.0)
+RUN cd /var/tmp/build && \
+    apt -y install git dh-autoreconf && \
+    git clone https://gitlab.freedesktop.org/mesa/glu.git && \
+    cd glu && \
+    ./autogen.sh && \
+    ./configure \
+        --prefix=/usr/local && \
+    make && \
+    make install && \
     cd .. && \
-    rm -rf mesa-demos-8.4.0
+    rm -rf glu 
+    
+# Install mesa-demos
+RUN cd tmp && wget "https://gitlab.freedesktop.org/mesa/demos/-/archive/mesa-demos-8.4.0/demos-mesa-demos-8.4.0.tar.gz" && \
+    apt -y install libglew-dev freeglut3-dev && \
+    apt -y clean && \
+    tar xfv /tmp/demos-mesa-demos-8.4.0.tar.gz && \
+    rm /tmp/demos-mesa-demos-8.4.0.tar.gz && \
+    cd demos-mesa-demos-8.4.0 &&  \
+    ./autogen.sh && \
+    ./configure --prefix=/usr/local && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf demos-mesa-demos-8.4.0
 
 # RUN apt -y install xvfb && \
 #     apt -y autoremove && \
 #     apt -y clean
 
-# Copy our entrypoint into the container.
-COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+# # Copy our entrypoint into the container.
+# COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Setup our environment variables.
 # ENV XVFB_WHD="1920x1080x24"\
