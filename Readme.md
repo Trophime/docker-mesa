@@ -1,7 +1,7 @@
 To build the container:
 
 ```
-docker build -t mesa:18.1.7-xenial -f ./Dockerfile-opengl-xenial --build-arg MESA_DEMOS="true" .
+docker build -t mesa:18.1.7-xenial -f ./Dockerfile-opengl-xenial --build-arg MESA_DEMOS="true" --build-arg VERSION=18.1.7 .
 ```
 
 To run the container:
