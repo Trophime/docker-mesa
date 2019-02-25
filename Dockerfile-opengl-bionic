@@ -32,6 +32,13 @@ RUN apt update && \
        libx11-dev libxext-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-xfixes0-dev && \
     apt -y clean
 
+# # Add missing libtizcore (tizonia-all)
+# RUN curl 'https://bintray.com/user/downloadSubjectPublicKey?username=tizonia' | apt-key add -  && \
+#     echo deb https://dl.bintray.com/tizonia/ubuntu bionic main | tee -a /etc/apt/sources.list.d/tizonia.list && \
+#     apt-get update && \
+#     apt-get -y install libtizcore-dev && \
+#     apt -y clean
+
 # Install mesa
 RUN mkdir -p /var/tmp/build && \
     cd /var/tmp/build && \
