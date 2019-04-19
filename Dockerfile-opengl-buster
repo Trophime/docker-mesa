@@ -9,6 +9,7 @@ ARG VCS_REF
 ARG BUILD_DATE
 ARG MESA_DEMOS="false"
 ARG VERSION="18.3.2"
+ARG CLANG_VERSION="6.0"
 
 # Labels / Metadata.
 LABEL maintainer="James Brink, brink.james@gmail.com" \
@@ -26,18 +27,18 @@ RUN apt update && \
     apt -y install \
        curl emacs nano vim bash-completion && \
     apt -y install \
-       build-essential pkg-config clang clang-6.0 x11-utils \
+       build-essential pkg-config clang clang-${CLANG_VERSION} x11-utils \
        wget python-dev python-mako \
-       llvm-dev llvm-6.0.dev zlib1g-dev x11proto-gl-dev xserver-xorg-dev \
+       llvm-dev llvm-${CLANG_VERSION}.dev zlib1g-dev x11proto-gl-dev xserver-xorg-dev \
        libx11-dev libxext-dev libx11-xcb-dev libxcb-dri2-0-dev libxcb-xfixes0-dev && \
     apt -y clean
 
 # NB: mesa swr FTBS  with llvm 7 : possible patch 8c872ac2e39affb2df3586a596e44a029535949d from https://github.com/mesa3d/mesa
 # set clang 6.0 as default
 RUN update-alternatives \
-      --install /usr/bin/clang clang /usr/bin/clang-6.0 100 \
-      --slave /usr/bin/clang++ clang++ /usr/bin/clang++-6.0 \
-      --slave /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-6.0
+      --install /usr/bin/clang clang /usr/bin/clang-${CLANG_VERSION} 100 \
+      --slave /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} \
+      --slave /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-${CLANG_VERSION}
     
 # # Add missing libtizcore (tizonia-all)
 # RUN curl 'https://bintray.com/user/downloadSubjectPublicKey?username=tizonia' | apt-key add -  && \
@@ -54,6 +55,7 @@ RUN mkdir -p /var/tmp/build && \
     rm mesa-$VERSION.tar.gz && \
     cd mesa-$VERSION && \
     ./configure \
+        --enable-autotools \
         --enable-llvm --enable-glx=gallium-xlib --with-gallium-drivers=swrast,swr \
         --disable-dri --disable-gbm --disable-egl \
 	--enable-gallium-osmesa --prefix=/usr/local && \
